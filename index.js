@@ -15,7 +15,7 @@ const replaceTemplate = (temp, product) => {
   output = output.replace(/{%ID%}/g, product.id)
 
   if (!product.organic) {
-    output = output.replace(/{%NOT_ORAGINC%}/g, 'not-organic')
+    output = output.replace(/{%NOT_ORGANIC%}/g, 'not-organic')
   }
   return output
 }
@@ -71,7 +71,12 @@ const server = http.createServer((req, res) => {
         res.writeHead(404, {
           'Content-Type': 'text/html; charset=utf-8',
         })
-        return res.end(tempNotFound)
+        let notFoundOutput = tempNotFound.replace(
+          /{%PRODUCTNAME%}/g,
+          'Product is not found'
+        )
+        notFoundOutput = notFoundOutput.replace(/{%IMAGE%}/g, '⚠️')
+        return res.end(notFoundOutput)
       }
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
@@ -86,12 +91,32 @@ const server = http.createServer((req, res) => {
       res.end(data)
       break
 
+    case '/images/404-error-illustration.png':
+      fs.readFile(
+        `${__dirname}/images/404-error-illustration.png`,
+        (err, data) => {
+          if (err) {
+            res.writeHead(404)
+            res.end('Image not found')
+          } else {
+            res.writeHead(200, { 'Content-Type': 'image/png' })
+            res.end(data)
+          }
+        }
+      )
+      break
+
     //404 page
     default:
       res.writeHead(404, {
         'Content-Type': 'text/html; charset=utf-8',
       })
-      res.end(tempNotFound)
+      let notFoundOutput = tempNotFound.replace(
+        /{%PRODUCTNAME%}/g,
+        'Page is not found'
+      )
+      notFoundOutput = notFoundOutput.replace(/{%IMAGE%}/g, '⚠️')
+      res.end(notFoundOutput)
   }
 })
 

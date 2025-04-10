@@ -65,6 +65,29 @@
       .container {
         width: 95rem;
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .error-img img {
+        width: 900px;
+      }
+
+      .back-home {
+        border: 1px #fff solid;
+        padding: 10px 20px;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 500;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.4s ease-in-out;
+      }
+
+      .back-home:hover {
+        border-color: #1b2f36;
+        color: #1b2f36;
       }
     </style>
   </head>
@@ -72,8 +95,10 @@
   <body>
     <div class="container">
       <h1>🌽 Node Farm 🥦</h1>
-      <div class="error-img"></div>
-      <a href="/overview">Back home</a>
+      <div class="error-img">
+        <img src="/images/404-error-illustration.png" alt="img" />
+      </div>
+      <a href="/overview" class="back-home">Back home</a>
     </div>
   </body>
 </html>
