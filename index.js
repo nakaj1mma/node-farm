@@ -1,33 +1,32 @@
-//MODULES
+//
+//----------------MODULES----------------
+//
+
+// Core modules
 const http = require('http')
 const url = require('url')
 const fs = require('fs')
 
-//SERVER
-const replaceTemplate = (temp, product) => {
-  let output = temp.replace(/{%PRODUCTNAME%}/g, product.productName)
-  output = output.replace(/{%IMAGE%}/g, product.image)
-  output = output.replace(/{%PRICE%}/g, product.price)
-  output = output.replace(/{%QUANTITY%}/g, product.quantity)
-  output = output.replace(/{%FROM%}/g, product.from)
-  output = output.replace(/{%NUTRIENTS%}/g, product.nutrients)
-  output = output.replace(/{%DESCRIPTION%}/g, product.description)
-  output = output.replace(/{%ID%}/g, product.id)
+// Library modules
+const slugify = require('slugify')
 
-  if (!product.organic) {
-    output = output.replace(/{%NOT_ORGANIC%}/g, 'not-organic')
-  }
-  return output
-}
+// Custom modules
+const replaceTemplate = require('./modules/replaceTemplate')
+const sendNotFoundPage = require('./modules/sendNotFoundPage')
 
+//
+//----------------SERVER----------------
+//
+
+// Server configuration
 const hostname = '127.0.0.1'
 const port = 8000
 
+// HTML templates
 const tempNotFound = fs.readFileSync(
   `${__dirname}/templates/template-404.html`,
   'utf-8'
 )
-
 const tempOverview = fs.readFileSync(
   `${__dirname}/templates/template-overview.html`,
   'utf-8'
@@ -41,21 +40,33 @@ const tempCard = fs.readFileSync(
   'utf-8'
 )
 
+// Data from API
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8')
+// Parsing JSON data
 const dataObj = JSON.parse(data)
 
+// Custom slugs
+const slugs = dataObj.map((el) => slugify(el.productName, { lower: true }))
+
+// Creating the HTTP server
 const server = http.createServer((req, res) => {
+  // Url parsing
   const { query, pathname } = url.parse(req.url, true)
 
+  // Pages
   switch (pathname) {
-    //Overview page
+    // Overview page
     case '/':
     case '/overview':
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
       })
       const cardsHtml = dataObj
-        .map((el) => replaceTemplate(tempCard, el))
+        .map((el, index) => {
+          const productSlug = slugs[index]
+          const modifiedCard = replaceTemplate(tempCard, el)
+          return modifiedCard.replace('{%PRODUCT_SLUG%}', productSlug)
+        })
         .join('')
 
       const output = tempOverview.replace('{%PRODUCT_CARDS%}', cardsHtml)
@@ -63,20 +74,13 @@ const server = http.createServer((req, res) => {
       res.end(output)
       break
 
-    //Product page
+    // Product page
     case '/product':
-      const { id } = query
-      const product = dataObj[id]
-      if (!id || !product) {
-        res.writeHead(404, {
-          'Content-Type': 'text/html; charset=utf-8',
-        })
-        let notFoundOutput = tempNotFound.replace(
-          /{%PRODUCTNAME%}/g,
-          'Product is not found'
-        )
-        notFoundOutput = notFoundOutput.replace(/{%IMAGE%}/g, '⚠️')
-        return res.end(notFoundOutput)
+      const { item } = query
+      const productIndex = slugs.indexOf(item)
+      const product = dataObj[productIndex]
+      if (!item || !product) {
+        return sendNotFoundPage(res, 'Product is not found', tempNotFound, 404)
       }
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
@@ -85,12 +89,13 @@ const server = http.createServer((req, res) => {
       res.end(outputProduct)
       break
 
-    //API
+    // API
     case '/api':
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(data)
       break
 
+    // 404 image
     case '/images/404-error-illustration.png':
       fs.readFile(
         `${__dirname}/images/404-error-illustration.png`,
@@ -106,20 +111,13 @@ const server = http.createServer((req, res) => {
       )
       break
 
-    //404 page
+    // 404 page
     default:
-      res.writeHead(404, {
-        'Content-Type': 'text/html; charset=utf-8',
-      })
-      let notFoundOutput = tempNotFound.replace(
-        /{%PRODUCTNAME%}/g,
-        'Page is not found'
-      )
-      notFoundOutput = notFoundOutput.replace(/{%IMAGE%}/g, '⚠️')
-      res.end(notFoundOutput)
+      sendNotFoundPage(res, 'Page is not found', tempNotFound, 404)
   }
 })
 
+// Starting the server and listening on the specified port
 server.listen(port, hostname, () => {
   console.log(`Server has been started at the http://${hostname}:${port}`)
 })
